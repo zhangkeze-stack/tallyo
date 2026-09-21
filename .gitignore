@@ -1,0 +1,19 @@
+# 敏感信息 - 绝不上传
+**/.env
+**/*.key
+**/keystore
+tallyo-backend/tallyo.db
+**/*.db
+
+# 依赖 - 不需要上传
+**/venv/
+**/node_modules/
+**/__pycache__/
+metropolis/lib/
+metropolis/cache/
+metropolis/out/
+metropolis/broadcast/
+
+# 杂项
+.DS_Store
+*.log

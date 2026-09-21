@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* 配色 */
+  --bg: #F7F9FB;
+  --surface: #FFFFFF;
+  --primary: #3532A7;
+  --primary-hover: #2A2888;
+  --success: #00B894;
+  --danger: #FF7A5C;
+  --text: #1A1D26;
+  --text-muted: #6B7280;
+  --border: #E8ECF1;
+
+  /* 间距 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  --radius: 14px;
+  --radius-sm: 10px;
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* 金额用等宽数字，对齐不跳动 */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* 通用按钮 */
+.btn {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-ghost { background: transparent; color: var(--text-muted); padding: 8px 12px; }
+.btn-ghost:hover { color: var(--text); }
+
+/* 输入框 */
+.input {
+  font-family: inherit;
+  font-size: 15px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.input:focus { border-color: var(--primary); }
+
+/* 卡片 */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+}
+
+/* 页面容器 */
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4);
+  min-height: 100vh;
+}
+
+h1, h2, h3 { font-weight: 700; letter-spacing: -0.02em; }
