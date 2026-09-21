@@ -107,6 +107,11 @@ export default function GroupDetail({ backendUser }) {
   }
 
   async function handleInvite() {
+    // 已经展开了就收回
+    if (inviteLink) {
+      setInviteLink("");
+      return;
+    }
     setError("");
     try {
       const { token } = await createInvite(Number(groupId));
@@ -177,8 +182,8 @@ export default function GroupDetail({ backendUser }) {
         <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{group.member_ids.length} members</span>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={handleInvite}
-            style={{ display: "flex", alignItems: "center", gap: 5, background: "var(--surface)", color: "var(--primary)", border: "1px solid var(--primary)", borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-            🔗 Invite
+            style={{ display: "flex", alignItems: "center", gap: 5, background: inviteLink ? "var(--bg)" : "var(--surface)", color: "var(--primary)", border: "1px solid var(--primary)", borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            {inviteLink ? "Hide link" : "🔗 Invite"}
           </button>
           <button onClick={() => setShowAddMember(!showAddMember)}
             style={{ display: "flex", alignItems: "center", gap: 5, background: showAddMember ? "var(--surface)" : "var(--primary)", color: showAddMember ? "var(--text-muted)" : "#fff", border: showAddMember ? "1px solid var(--border)" : "none", borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
