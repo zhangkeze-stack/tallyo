@@ -9,7 +9,7 @@ import models
 load_dotenv()
 
 PRIVY_APP_ID = os.getenv("PRIVY_APP_ID")
-PRIVY_VERIFICATION_KEY = os.getenv("PRIVY_VERIFICATION_KEY")
+PRIVY_VERIFICATION_KEY = (os.getenv("PRIVY_VERIFICATION_KEY") or "").replace("\\n", "\n")
 
 
 def verify_privy_token(authorization: str | None = Header(default=None)):

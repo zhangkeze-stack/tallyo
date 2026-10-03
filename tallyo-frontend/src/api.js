@@ -1,6 +1,6 @@
 import { getAccessToken } from "@privy-io/react-auth";
 
-const BASE = "http://localhost:8000";
+const BASE = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
 // 统一的请求函数：自动带 token；遇 401 自动刷新 token 重试一次
 async function request(path, options = {}, isRetry = false) {
