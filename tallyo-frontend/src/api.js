@@ -24,11 +24,11 @@ async function request(path, options = {}, isRetry = false) {
   // 重试后仍 401：会话彻底失效，广播事件让 App 引导重新登录
   if (res.status === 401 && isRetry) {
     window.dispatchEvent(new CustomEvent("tallyo:session-expired"));
-    throw new Error("会话已过期，请重新登录");
+    throw new Error("Your session has expired. Please log in again.");
   }
 
   if (!res.ok) {
-    let detail = "请求失败";
+    let detail = "Request failed";
     try { detail = (await res.json()).detail || detail; } catch {}
     throw new Error(detail);
   }
@@ -85,7 +85,7 @@ export const createInvite = (groupId) =>
 // 查看邀请信息（落地页用，不需登录）
 export async function getInvite(token) {
   const res = await fetch(`${BASE}/invite/${token}`);
-  if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "邀请无效"); }
+  if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "This invite is not valid"); }
   return res.json();
 }
 
@@ -100,7 +100,7 @@ export const createPaymentLink = (amount, note) =>
 // 查收款链接信息（落地页用，不需登录）
 export async function getPaymentLink(token) {
   const res = await fetch(`${BASE}/payment-links/${token}`);
-  if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "收款链接无效"); }
+  if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "This payment link is not valid"); }
   return res.json();
 }
 

@@ -19,7 +19,7 @@ def ensure_member(db: Session, group_id: int, user):
         models.GroupMember.user_id == user.id,
     ).first()
     if not m:
-        raise HTTPException(status_code=403, detail="你不是该群成员，无权访问")
+        raise HTTPException(status_code=403, detail="You are not a member of this group")
 
 
 app.add_middleware(
@@ -59,7 +59,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 @app.post("/groups", response_model=schemas.GroupOut)
 def create_group(group: schemas.GroupCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     if group.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="群主必须是你本人")
+        raise HTTPException(status_code=403, detail="The group owner must be you")
     new_group = models.Group(name=group.name, created_by=group.created_by)
     db.add(new_group)
     db.commit()
@@ -104,7 +104,7 @@ def create_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Group not found")
     ensure_member(db, expense.group_id, current_user)
     if expense.paid_by != current_user.id:
-        raise HTTPException(status_code=403, detail="只能记录由你本人垫付的账")
+        raise HTTPException(status_code=403, detail="You can only record expenses that you paid")
 
     members = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == expense.group_id
@@ -192,7 +192,7 @@ def create_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)
 
 # ---------- 净欠款计算（抽成函数，结清和查询共用）----------
 def compute_net_debts(db: Session, group_id: int):
-    """返回 {(debtor, creditor): net_amount}，只含净额 > 0 的方向。"""
+    """Return {(debtor, creditor): net_amount}, only for directions with a net amount above 0."""
     expenses = db.query(models.Expense).filter(
         models.Expense.group_id == group_id
     ).all()
@@ -271,7 +271,7 @@ def create_settlement(body: schemas.SettlementCreate, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="Group not found")
     ensure_member(db, body.group_id, current_user)
     if body.from_user != current_user.id:
-        raise HTTPException(status_code=403, detail="只能结清你本人的欠款")
+        raise HTTPException(status_code=403, detail="You can only settle your own debt")
 
     # 1. 算净欠款，确认 from_user 确实净欠 to_user
     net = compute_net_debts(db, body.group_id)
@@ -317,7 +317,7 @@ def create_settlement(body: schemas.SettlementCreate, db: Session = Depends(get_
         amount=net_amount,
         tx_hash=body.tx_hash,
         status="confirmed" if body.tx_hash else "pending",
-        note=f"{group.name} · 结清",
+        note=f"{group.name} · Settlement",
     )
     db.add(settlement)
     db.commit()
@@ -373,7 +373,7 @@ def sync_user(
 @app.get("/users/{user_id}/groups")
 def get_user_groups(user_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     if user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="只能查看你自己的群")
+        raise HTTPException(status_code=403, detail="You can only view your own groups")
     memberships = db.query(models.GroupMember).filter(
         models.GroupMember.user_id == user_id
     ).all()
@@ -410,7 +410,7 @@ def add_member(group_id: int, body: schemas.AddMemberByEmail, db: Session = Depe
     # 按邮箱找用户
     user = db.query(models.User).filter(models.User.email == body.email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="该邮箱还没注册 Tallyo")
+        raise HTTPException(status_code=404, detail="That email is not registered on Tallyo yet")
 
     # 已在群里就不重复加
     existing = db.query(models.GroupMember).filter(
@@ -479,23 +479,23 @@ def create_invite(group_id: int, db: Session = Depends(get_db), current_user=Dep
 def get_invite(token: str, db: Session = Depends(get_db)):
     inv = db.query(models.Invitation).filter(models.Invitation.token == token).first()
     if not inv:
-        raise HTTPException(status_code=404, detail="邀请无效")
+        raise HTTPException(status_code=404, detail="This invite is not valid")
     if inv.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=410, detail="邀请已过期")
+        raise HTTPException(status_code=410, detail="This invite has expired")
     group = db.query(models.Group).filter(models.Group.id == inv.group_id).first()
-    return {"group_id": inv.group_id, "group_name": group.name if group else "未知群"}
+    return {"group_id": inv.group_id, "group_name": group.name if group else "Unknown group"}
 
 
 @app.post("/invite/{token}/accept", response_model=schemas.GroupOut)
 def accept_invite(token: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     inv = db.query(models.Invitation).filter(models.Invitation.token == token).first()
     if not inv:
-        raise HTTPException(status_code=404, detail="邀请无效")
+        raise HTTPException(status_code=404, detail="This invite is not valid")
     if inv.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=410, detail="邀请已过期")
+        raise HTTPException(status_code=410, detail="This invite has expired")
     group = db.query(models.Group).filter(models.Group.id == inv.group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="群不存在")
+        raise HTTPException(status_code=404, detail="Group not found")
     existing = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == inv.group_id,
         models.GroupMember.user_id == current_user.id,
@@ -537,10 +537,10 @@ def create_payment_link(body: PaymentLinkCreate, db: Session = Depends(get_db), 
 def get_payment_link(token: str, db: Session = Depends(get_db)):
     pl = db.query(models.PaymentLink).filter(models.PaymentLink.token == token).first()
     if not pl:
-        raise HTTPException(status_code=404, detail="收款链接无效")
+        raise HTTPException(status_code=404, detail="This payment link is not valid")
     payee = db.query(models.User).filter(models.User.id == pl.payee_id).first()
     return {
-        "payee_name": payee.email.split("@")[0] if payee else "未知",
+        "payee_name": payee.email.split("@")[0] if payee else "Unknown",
         "payee_wallet": payee.wallet_address if payee else None,
         "amount": pl.amount,
         "note": pl.note,
@@ -553,7 +553,7 @@ def get_payment_link(token: str, db: Session = Depends(get_db)):
 def mark_paid(token: str, tx_hash: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     pl = db.query(models.PaymentLink).filter(models.PaymentLink.token == token).first()
     if not pl:
-        raise HTTPException(status_code=404, detail="收款链接无效")
+        raise HTTPException(status_code=404, detail="This payment link is not valid")
     pl.paid = True
     pl.tx_hash = tx_hash
     db.commit()
@@ -565,9 +565,9 @@ def mark_paid(token: str, tx_hash: str, db: Session = Depends(get_db), current_u
 def get_user_by_email(email: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="该邮箱还没注册 Tallyo")
+        raise HTTPException(status_code=404, detail="That email is not registered on Tallyo yet")
     if not user.wallet_address:
-        raise HTTPException(status_code=400, detail="对方还没有钱包地址")
+        raise HTTPException(status_code=400, detail="The recipient has no wallet address yet")
     return {"id": user.id, "email": user.email, "wallet_address": user.wallet_address}
 
 
@@ -618,7 +618,7 @@ def my_transactions(db: Session = Depends(get_db), current_user=Depends(get_curr
     # 预取用户邮箱
     def name_of(uid):
         u = db.query(models.User).filter(models.User.id == uid).first()
-        return u.email.split("@")[0] if u else f"用户{uid}"
+        return u.email.split("@")[0] if u else f"User {uid}"
 
     result = []
     for st in setts:
@@ -629,7 +629,7 @@ def my_transactions(db: Session = Depends(get_db), current_user=Depends(get_curr
             "direction": "out" if outgoing else "in",   # 转出 / 收入
             "counterparty": name_of(other),
             "amount": st.amount,
-            "note": st.note or "转账",
+            "note": st.note or "Transfer",
             "tx_hash": st.tx_hash,
             "created_at": st.created_at.isoformat() if st.created_at else None,
         })
@@ -644,22 +644,22 @@ def remove_member(group_id: int, user_id: int, db: Session = Depends(get_db), cu
         raise HTTPException(status_code=404, detail="Group not found")
     # 只有群主能删
     if group.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="只有群主能移除成员")
+        raise HTTPException(status_code=403, detail="Only the group owner can remove members")
     # 不能删群主自己
     if user_id == group.created_by:
-        raise HTTPException(status_code=400, detail="群主不能移除自己")
+        raise HTTPException(status_code=400, detail="The owner cannot remove themselves")
     # 检查该成员是否还有未结清欠款（任一方向）
     net = compute_net_debts(db, group_id)
     for (debtor, creditor), amt in net.items():
         if (debtor == user_id or creditor == user_id) and amt > 0.001:
-            raise HTTPException(status_code=400, detail="该成员还有未结清欠款，请先结清")
+            raise HTTPException(status_code=400, detail="This member still has unsettled debts. Settle them first.")
     # 从群成员移除
     m = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == group_id,
         models.GroupMember.user_id == user_id,
     ).first()
     if not m:
-        raise HTTPException(status_code=404, detail="该用户不在群里")
+        raise HTTPException(status_code=404, detail="That user is not in this group")
     db.delete(m)
     db.commit()
     return {"ok": True}
@@ -672,12 +672,12 @@ def leave_group(group_id: int, db: Session = Depends(get_db), current_user=Depen
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
     if group.created_by == current_user.id:
-        raise HTTPException(status_code=400, detail="群主不能退出，请使用解散群")
+        raise HTTPException(status_code=400, detail="The owner cannot leave. Disband the group instead.")
     ensure_member(db, group_id, current_user)
     net = compute_net_debts(db, group_id)
     for (debtor, creditor), amt in net.items():
         if (debtor == current_user.id or creditor == current_user.id) and amt > 0.001:
-            raise HTTPException(status_code=400, detail="你还有未结清欠款，请先结清再退出")
+            raise HTTPException(status_code=400, detail="You still have unsettled debts. Settle them before leaving.")
     m = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == group_id,
         models.GroupMember.user_id == current_user.id,
@@ -694,10 +694,10 @@ def disband_group(group_id: int, db: Session = Depends(get_db), current_user=Dep
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
     if group.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="只有群主能解散群")
+        raise HTTPException(status_code=403, detail="Only the group owner can disband the group")
     net = compute_net_debts(db, group_id)
     if any(amt > 0.001 for amt in net.values()):
-        raise HTTPException(status_code=400, detail="群内还有未结清欠款，请先全部结清")
+        raise HTTPException(status_code=400, detail="There are still unsettled debts in this group. Settle everything first.")
     # 删成员关系、账目及其分摊、群本身
     exp_ids = [e.id for e in db.query(models.Expense).filter(models.Expense.group_id == group_id).all()]
     if exp_ids:

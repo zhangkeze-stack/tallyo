@@ -13,9 +13,9 @@ PRIVY_VERIFICATION_KEY = (os.getenv("PRIVY_VERIFICATION_KEY") or "").replace("\\
 
 
 def verify_privy_token(authorization: str | None = Header(default=None)):
-    """从请求头拿 Bearer token，验证，返回 Privy 用户 DID。"""
+    """Read the Bearer token from the request header, verify it, and return the Privy user DID."""
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="缺少认证 token")
+        raise HTTPException(status_code=401, detail="Missing authentication token")
     token = authorization.split(" ", 1)[1]
     try:
         decoded = jwt.decode(
@@ -26,7 +26,7 @@ def verify_privy_token(authorization: str | None = Header(default=None)):
             algorithms=["ES256"],
         )
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"token 验证失败: {e}")
+        raise HTTPException(status_code=401, detail=f"Token verification failed: {e}")
     return decoded["sub"]  # Privy 用户 DID
 
 
@@ -34,8 +34,8 @@ def get_current_user(
     privy_did: str = Depends(verify_privy_token),
     db: Session = Depends(get_db),
 ):
-    """根据验证过的身份，找到后端 users 表里的用户。"""
+    """Find the backend user (users table) for the verified identity."""
     user = db.query(models.User).filter(models.User.privy_did == privy_did).first()
     if not user:
-        raise HTTPException(status_code=401, detail="用户未同步，请重新登录")
+        raise HTTPException(status_code=401, detail="User not synced. Please log in again.")
     return user
