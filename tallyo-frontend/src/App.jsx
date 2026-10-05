@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
-import { syncUser } from "./api";
+import { syncUser, fundMe } from "./api";
 import GroupList from "./pages/GroupList";
 import GroupDetail from "./pages/GroupDetail";
 import JoinGroup from "./pages/JoinGroup";
@@ -47,7 +47,10 @@ function App() {
   useEffect(() => {
     if (authenticated && user?.email?.address && user?.wallet?.address) {
       syncUser(user.email.address, user.wallet.address, user.id)
-        .then(setBackendUser)
+        .then((u) => {
+          setBackendUser(u);
+          fundMe().catch(() => {});   // testnet: top up an empty wallet (never blocks login)
+        })
         .catch(console.error);
     }
   }, [authenticated, user?.email?.address, user?.wallet?.address]);

@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from database import engine, get_db
 import models
 import schemas
-from auth import get_current_user
+from auth import get_current_user, verify_privy_token
+from funding import fund_in_background
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -342,23 +343,26 @@ def create_settlement(body: schemas.SettlementCreate, db: Session = Depends(get_
 
 # 登录时同步用户：邮箱已存在则返回该用户，否则创建（并更新钱包地址）
 @app.post("/auth/sync", response_model=schemas.UserOut)
-def sync_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    existing = db.query(models.User).filter(models.User.email == user.email).first()
+def sync_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    did: str = Depends(verify_privy_token),   # Privy identity verified from the access token
+):
+    """Create or update the backend user for the *verified* Privy identity.
+    A caller can only ever touch the record that belongs to their own token."""
+    existing = db.query(models.User).filter(models.User.privy_did == did).first()
     if existing:
-        # 已存在：如果钱包地址有更新就补上
-        changed = False
         if user.wallet_address and existing.wallet_address != user.wallet_address:
             existing.wallet_address = user.wallet_address
-            changed = True
-        if user.privy_did and existing.privy_did != user.privy_did:
-            existing.privy_did = user.privy_did
-            changed = True
-        if changed:
             db.commit()
             db.refresh(existing)
         return existing
-    # 不存在：新建
-    new_user = models.User(email=user.email, wallet_address=user.wallet_address, privy_did=user.privy_did)
+
+    # New identity: its email must not already belong to a different identity.
+    if db.query(models.User).filter(models.User.email == user.email).first():
+        raise HTTPException(status_code=409, detail="This email is already linked to another account")
+
+    new_user = models.User(email=user.email, wallet_address=user.wallet_address, privy_did=did)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -729,3 +733,11 @@ def known_people(db: Session = Depends(get_db), current_user=Depends(get_current
         if u:
             result.append({"id": u.id, "email": u.email})
     return result
+
+
+@app.post("/me/fund")
+def fund_me(current_user=Depends(get_current_user)):
+    """Testnet only: top up the caller's OWN wallet if it is nearly empty.
+    The address comes from our database for the verified user, never from the request."""
+    fund_in_background(current_user.wallet_address)
+    return {"ok": True}

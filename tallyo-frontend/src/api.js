@@ -42,15 +42,12 @@ export async function getHealth() {
 }
 
 // 登录同步（不需要 token，因为这时候正在建立身份）
-export async function syncUser(email, walletAddress, privyDid) {
-  const res = await fetch(`${BASE}/auth/sync`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, wallet_address: walletAddress, privy_did: privyDid }),
-  });
-  if (!res.ok) throw new Error("同步用户失败");
-  return res.json();
-}
+// Login sync: sends the Privy token, so the backend only trusts the verified identity
+export const syncUser = (email, walletAddress, privyDid) =>
+  request(`/auth/sync`, { method: "POST", body: JSON.stringify({ email, wallet_address: walletAddress, privy_did: privyDid }) });
+
+// Testnet: ask the backend to top up this user's own empty wallet (runs in the background)
+export const fundMe = () => request(`/me/fund`, { method: "POST" });
 
 // —— 以下都自动带 token ——
 export const getMyGroups = (userId) => request(`/users/${userId}/groups`);
